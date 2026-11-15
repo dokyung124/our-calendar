@@ -272,7 +272,7 @@ function viewProfile() {
   return '<div class="col" style="gap:6px;padding-top:32px"><h1 class="disp" style="font-size:28px;line-height:36px">반가워요</h1>' +
     '<p class="sub" style="line-height:20px">캘린더에 보일 이름과 생일을 알려 주세요. 생일은 매년 자동으로 표시돼요.</p></div>' +
     '<form class="col" data-form="profile" style="gap:14px" novalidate>' +
-    '<div class="col"><label class="sec-h" for="p-name">이름</label><input class="field" id="p-name" type="text" maxlength="8" autocomplete="off"></div>' +
+    '<div class="col"><label class="sec-h" for="p-name">이름</label><input class="field" id="p-name" type="text" maxlength="2" autocomplete="off" placeholder="예: 지우"><p class="sub" style="padding:0 4px">성은 빼고 이름 2글자까지만 적어 주세요.</p></div>' +
     '<div class="col"><label class="sec-h" for="p-bd">생일</label><input class="field" id="p-bd" type="date" max="' + today + '"></div>' +
     msgLine() + '<button class="btn" style="flex:none" type="submit">다음</button></form>' +
     '<button class="text-btn" data-act="logout" style="align-self:center">로그아웃</button>';
@@ -427,7 +427,7 @@ function viewSettings() {
   return '<div class="row"><button class="icon" data-act="go" data-view="home" aria-label="캘린더로 돌아가기">' + I.left + '</button>' +
     '<h1 class="disp" style="font-size:24px">우리 정보</h1></div>' +
     '<form class="col" data-form="settings" style="gap:14px" novalidate>' +
-    '<div class="col"><label class="sec-h" for="s-name">내 이름</label><input class="field" id="s-name" type="text" maxlength="8" autocomplete="off" value="' + esc(S.me.name) + '"></div>' +
+    '<div class="col"><label class="sec-h" for="s-name">내 이름</label><input class="field" id="s-name" type="text" maxlength="2" autocomplete="off" value="' + esc(S.me.name) + '"><p class="sub" style="padding:0 4px">성은 빼고 이름 2글자까지만 적어 주세요.</p></div>' +
     '<div class="col"><label class="sec-h" for="s-bd">내 생일</label><input class="field" id="s-bd" type="date" max="' + today + '" value="' + esc(S.me.birthday || '') + '"></div>' +
     '<div class="col"><label class="sec-h" for="s-met">처음 만난 날</label><input class="field" id="s-met" type="date" max="' + today + '" value="' + esc(S.couple.met || '') + '">' +
     '<p class="sub" style="padding:0 4px;line-height:20px">매년 이 날짜에 "💛1주년", "💛2주년"처럼 하루 종일 일정이 생겨요.</p></div>' +
@@ -662,6 +662,7 @@ app.addEventListener('submit', function (e) {
     else if (kind === 'profile') {
       var name = val('p-name').trim();
       if (!name) { msg('이름을 적어 주세요.'); return; }
+      if (Array.from(name).length > 2) { msg('이름은 성을 빼고 2글자까지만 적어 주세요.'); return; }
       ok(await sb.from('profiles').insert({ id: S.user.id, name: name, birthday: val('p-bd') || null }));
       await enter(false);
     }
@@ -678,6 +679,7 @@ app.addEventListener('submit', function (e) {
     else if (kind === 'settings') {
       var nm = val('s-name').trim();
       if (!nm) { msg('이름을 적어 주세요.'); return; }
+      if (Array.from(nm).length > 2) { msg('이름은 성을 빼고 2글자까지만 적어 주세요.'); return; }
       msg('저장하는 중…');
       ok(await sb.from('profiles').update({ name: nm, birthday: val('s-bd') || null }).eq('id', S.user.id));
       ok(await sb.from('couples').update({ met: val('s-met') || null }).eq('id', S.me.couple_id));
