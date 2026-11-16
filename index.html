@@ -123,6 +123,15 @@ form{margin:0}
 .slide .pc{flex:none;font-size:14px;line-height:20px;color:#fff;text-align:center;align-items:center}
 .chip.m,.bar.m{background:#FAD9E4;color:#86204A}
 .pin{width:1em;height:1em;vertical-align:-.12em;margin-right:2px}
+.nav{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom));z-index:5;display:flex;gap:4px;background:#fff;border-radius:18px;padding:4px;box-shadow:0 4px 16px rgba(30,35,48,.16);margin-top:auto}
+.nav button{flex:1;min-height:48px;border:0;border-radius:14px;background:transparent;font-size:14px;color:#555B6A;display:flex;align-items:center;justify-content:center;gap:6px}
+.nav button[aria-current=page]{background:#1E2330;color:#fff;font-weight:700}
+.own.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wi{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 10px}
+.ck{width:44px;height:44px;border-radius:14px;border:1.5px solid #8B91A0;background:#fff;color:transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ck[aria-pressed=true]{background:#1E2330;border-color:#1E2330;color:#fff}
+.wt{font-size:15px;line-height:22px;overflow-wrap:anywhere}
+.wi.done .wt{text-decoration:line-through;color:#555B6A}
 </style>
 </head>
 <body>
@@ -159,14 +168,17 @@ var I = {
   photo: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>',
   person: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-5.5 7-5.5s6 1.5 7 5.5"/></svg>',
   pin: '<svg class="pin" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.500s-6.500-5.700-6.500-11a6.500 6.500 0 0 1 13 0c0 5.300-6.500 11-6.500 11z"/><circle cx="12" cy="10.500" r="2.300"/></svg>',
+  cal: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  star: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.500l2.600 5.300 5.900.900-4.250 4.100 1 5.800L12 16.900l-5.250 2.700 1-5.800L3.500 9.700l5.900-.900z"/></svg>',
+  check: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.500l4.500 4.500L19 7.500"/></svg>',
   sync: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/></svg>'
 };
 
 /* ---------- 서버 ---------- */
 var sb = null;
 var S = { user: null, me: null, couple: null, alone: true };
-var data = { names: { a: '', b: '' }, dates: { a: '', b: '', met: '' }, me: 'a', notes: [], events: [], photos: [], photoCount: {} };
-var st = { view: 'loading', authMode: 'login', y: now.getFullYear(), m: now.getMonth() + 1, sel: today, photos: [], draft: [], viewer: false, vi: 0, busy: false, note: '', slide: '' };
+var data = { names: { a: '', b: '' }, dates: { a: '', b: '', met: '' }, me: 'a', notes: [], events: [], photos: [], photoCount: {}, wishes: [] };
+var st = { view: 'loading', authMode: 'login', y: now.getFullYear(), m: now.getMonth() + 1, sel: today, photos: [], draft: [], viewer: false, vi: 0, busy: false, note: '', slide: '', wishFilter: 'all', wishKind: 'eat' };
 var urlCache = {};
 
 function errText(e) {
@@ -221,8 +233,14 @@ async function loadAll() {
   data.events = res[3].map(function (e) { return { id: e.id, date: e.date, owner: e.owner, title: e.title, allDay: e.all_day, start: e.start_time || '', end: e.end_time || '', memo: e.memo || '' }; });
   data.photos = res[4];
   countPhotos();
+  /* 위시리스트 표는 나중에 추가된 것이라, 아직 없으면 그 기능만 쉬게 둔다 */
+  try {
+    data.wishes = (await fetchAll('wishes')).map(function (w) { return wishRow(w, slotOf[w.author] || 'a'); });
+    S.wishReady = true;
+  } catch (e) { data.wishes = []; S.wishReady = false; }
   return 'home';
 }
+function wishRow(w, slot) { return { id: w.id, kind: w.kind, text: w.text, author: slot, done: !!w.done, ts: Date.parse(w.created_at) }; }
 function countPhotos() {
   data.photoCount = {};
   data.photos.forEach(function (p) { data.photoCount[p.date] = (data.photoCount[p.date] || 0) + 1; });
@@ -333,6 +351,43 @@ function inviteCard() {
     '<button class="text-btn" data-act="leave" style="color:#7A3F0C;font-weight:700;text-align:left;padding:0">초대 코드로 다른 캘린더에 들어가기</button></div>';
 }
 
+function navHtml(cur) {
+  return '<nav class="nav" aria-label="화면 이동">' +
+    '<button data-act="go" data-view="home"' + (cur === 'home' ? ' aria-current="page"' : '') + '>' + I.cal + '캘린더</button>' +
+    '<button data-act="go" data-view="wish"' + (cur === 'wish' ? ' aria-current="page"' : '') + '>' + I.star + '위시리스트</button></nav>';
+}
+var KIND = { eat: '먹고 싶은 것', go: '가고 싶은 곳' };
+function viewWish() {
+  var f = st.wishFilter;
+  var list = data.wishes.filter(function (w) { return f === 'all' || w.kind === f; })
+    .sort(function (x, y) { return (x.done - y.done) || (y.ts - x.ts); });
+  var kinds = ['eat', 'go'].map(function (k) {
+    return '<div><input type="radio" name="wk" id="wk-' + k + '" value="' + k + '"' + (k === st.wishKind ? ' checked' : '') + '><label for="wk-' + k + '" style="min-height:48px">' + KIND[k] + '</label></div>';
+  }).join('');
+  var filters = [['all', '전체'], ['eat', KIND.eat], ['go', KIND.go]].map(function (x) {
+    return '<button data-act="wish-filter" data-f="' + x[0] + '" aria-pressed="' + (f === x[0]) + '">' + x[1] + '</button>';
+  }).join('');
+  var items = list.map(function (w) {
+    return '<div class="card wi' + (w.done ? ' done' : '') + '">' +
+      '<button class="ck" data-act="wish-done" data-id="' + w.id + '" aria-pressed="' + w.done + '" aria-label="' + (w.done ? '했어요 표시 풀기' : '했어요 표시') + '">' + I.check + '</button>' +
+      '<div class="col grow" style="gap:4px;min-width:0"><span class="wt">' + esc(w.text) + '</span>' +
+      '<div class="row">' + chip(w.author) + '<span class="sub">' + KIND[w.kind] + '</span></div></div>' +
+      '<button class="del" data-act="del-wish" data-id="' + w.id + '">삭제</button></div>';
+  }).join('');
+  return '<div><div class="sub">함께 하고 싶은 것들</div><h1 class="disp" style="font-size:28px;line-height:36px">위시리스트</h1></div>' +
+    (S.wishReady ? '' : '<div class="warn">위시리스트를 쓰려면 Supabase에서 "업데이트 3" 설정을 먼저 실행해야 해요.</div>') +
+    (st.note ? '<div class="warn">' + esc(st.note) + '</div>' : '') +
+    '<form class="card col" data-form="wish" style="gap:10px" novalidate>' +
+    '<fieldset><legend class="sr">종류</legend><div class="own two">' + kinds + '</div></fieldset>' +
+    '<div class="row"><label class="sr" for="wi-text">위시리스트에 넣을 내용</label>' +
+    '<input class="field grow" id="wi-text" type="text" maxlength="100" autocomplete="off" placeholder="예: 성수동 소금빵" style="background:#F4F5F7;min-width:0">' +
+    '<button class="btn" type="submit" style="flex:none;padding:0 18px">추가</button></div>' +
+    '<div class="row sub" style="gap:6px">작성자 ' + chip(data.me) + '</div>' + msgLine() + '</form>' +
+    '<div class="seg" style="align-self:flex-start">' + filters + '</div>' +
+    (items || '<p class="empty" style="padding-left:4px">아직 적어 둔 게 없어요.</p>') +
+    navHtml('wish');
+}
+
 function viewHome() {
   var first = new Date(st.y, st.m - 1, 1).getDay();
   var days = new Date(st.y, st.m, 0).getDate();
@@ -385,7 +440,8 @@ function viewHome() {
     '<div class="card col grow" style="gap:12px"><div class="row between"><h2 class="disp" style="font-size:20px">' + fmtDate(st.sel) + '</h2>' +
     '<button class="text-btn pri" data-act="go" data-view="day" style="font-weight:500;font-size:14px">자세히</button></div>' + marksHtml(st.sel) + body + '</div>' +
     '<div class="row"><button class="btn" data-act="go" data-view="write">' + I.photo + '기록 남기기</button>' +
-    '<button class="btn sec" data-act="go" data-view="schedule">' + I.plus + '일정 추가</button></div>';
+    '<button class="btn sec" data-act="go" data-view="schedule">' + I.plus + '일정 추가</button></div>' +
+    navHtml('home');
 }
 
 function viewDay() {
@@ -473,7 +529,7 @@ function viewSettings() {
       : '<div class="card col" style="gap:4px"><span class="sub">연결된 사람</span><span>' + esc(data.names[other]) + '</span></div>') +
     '<p class="sub" style="padding:0 4px">로그인한 계정: ' + esc(S.user.email || '') + '</p>' +
     '<button class="btn sec" style="flex:none" data-act="logout">로그아웃</button>' +
-    '<p class="sub" style="text-align:center">버전 10</p>';
+    '<p class="sub" style="text-align:center">버전 11</p>';
 }
 
 function viewerHtml() {
@@ -506,7 +562,7 @@ function bindViewer() {
   });
 }
 
-var VIEWS = { loading: viewLoading, config: viewConfig, auth: viewAuth, profile: viewProfile, couple: viewCouple, home: viewHome, day: viewDay, write: viewWrite, schedule: viewSchedule, settings: viewSettings };
+var VIEWS = { loading: viewLoading, config: viewConfig, auth: viewAuth, profile: viewProfile, couple: viewCouple, home: viewHome, day: viewDay, write: viewWrite, schedule: viewSchedule, settings: viewSettings, wish: viewWish };
 var lastView = '';
 function render() {
   app.innerHTML = VIEWS[st.view]() + (st.viewer ? viewerHtml() : '');
@@ -672,9 +728,9 @@ function clearDraft() { st.draft.forEach(function (d) { URL.revokeObjectURL(d.ur
 async function enter(keepView) {
   var next = await loadAll();
   if (next !== 'home') { st.view = next; render(); return; }
-  if (!keepView || ['home', 'day', 'write', 'schedule', 'settings'].indexOf(st.view) < 0) st.view = 'home';
+  if (!keepView || ['home', 'day', 'write', 'schedule', 'settings', 'wish'].indexOf(st.view) < 0) st.view = 'home';
   st.photos = await photosOf(st.sel);
-  if (st.view === 'home' || st.view === 'day') render();
+  if (st.view === 'home' || st.view === 'day' || (st.view === 'wish' && !val('wi-text'))) render();
 }
 async function guard(fn) {
   if (st.busy) return;
@@ -767,6 +823,18 @@ app.addEventListener('click', function (e) {
       await selectDate(edate);
       st.view = 'home';
     }
+    else if (act === 'wish-filter') { st.wishFilter = el.dataset.f; }
+    else if (act === 'wish-done') {
+      var w = data.wishes.filter(function (x) { return x.id === el.dataset.id; })[0];
+      if (!w) return;
+      ok(await sb.from('wishes').update({ done: !w.done }).eq('id', w.id));
+      w.done = !w.done;
+    }
+    else if (act === 'del-wish') {
+      if (!armed(el)) return;
+      ok(await sb.from('wishes').delete().eq('id', el.dataset.id));
+      data.wishes = data.wishes.filter(function (x) { return x.id !== el.dataset.id; });
+    }
     else if (act === 'del-note') {
       if (!armed(el)) return;
       ok(await sb.from('notes').delete().eq('id', el.dataset.id));
@@ -857,6 +925,16 @@ app.addEventListener('submit', function (e) {
       if (code.length !== 6) { msg('초대 코드 6자리를 적어 주세요.'); return; }
       ok(await sb.rpc('join_couple', { p_code: code }));
       await enter(false);
+    }
+    else if (kind === 'wish') {
+      var wt = val('wi-text').trim();
+      var wk = document.querySelector('input[name="wk"]:checked');
+      if (!wt) { msg('내용을 적어 주세요.'); return; }
+      st.wishKind = wk ? wk.value : 'eat';
+      var nw = ok(await sb.from('wishes').insert({ couple_id: S.me.couple_id, kind: st.wishKind, text: wt, author: S.user.id }).select().single());
+      data.wishes.push(wishRow(nw, data.me));
+      if (st.wishFilter !== 'all') st.wishFilter = st.wishKind;
+      render();
     }
     else if (kind === 'settings') {
       var nm = val('s-name').trim();
