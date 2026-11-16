@@ -158,6 +158,7 @@ function errText(e) {
   if (/rate limit/i.test(m)) return '요청이 너무 많아요. 잠시 뒤에 다시 해 주세요.';
   if (/BAD_CODE/.test(m)) return '초대 코드를 찾을 수 없어요. 다시 확인해 주세요.';
   if (/FULL/.test(m)) return '이미 두 사람이 연결된 캘린더예요.';
+  if (/NOT_ALONE/.test(m)) return '이미 두 사람이 연결된 캘린더라서 나갈 수 없어요.';
   if (/ALREADY_LINKED/.test(m)) return '이미 캘린더에 연결돼 있어요.';
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '인터넷 연결을 확인해 주세요.';
   return '문제가 생겼어요. (' + m + ')';
@@ -294,7 +295,9 @@ function viewCouple() {
 function inviteCard() {
   return '<div class="warn col" style="gap:6px"><span>아직 혼자예요. 상대에게 이 초대 코드를 보내 주세요.</span>' +
     '<div class="row between"><strong style="font-size:22px;letter-spacing:4px">' + esc(S.couple.code) + '</strong>' +
-    '<button class="text-btn" data-act="copy-code" style="color:#7A3F0C;font-weight:700">복사</button></div></div>';
+    '<button class="text-btn" data-act="copy-code" style="color:#7A3F0C;font-weight:700">복사</button></div>' +
+    '<span style="border-top:1px solid #E9C3A0;padding-top:8px">상대가 먼저 캘린더를 만들어서 초대 코드를 받았나요?</span>' +
+    '<button class="text-btn" data-act="leave" style="color:#7A3F0C;font-weight:700;text-align:left;padding:0">초대 코드로 다른 캘린더에 들어가기</button></div>';
 }
 
 function viewHome() {
@@ -551,6 +554,16 @@ app.addEventListener('click', function (e) {
       await sb.auth.signOut();
       S.user = null; S.me = null; S.couple = null; urlCache = {};
       st.view = 'auth'; st.authMode = 'login';
+    }
+    else if (act === 'leave') {
+      if (!armed(el, '이 캘린더에 남긴 기록이 지워져요. 한 번 더 누르면 진행해요')) return;
+      el.textContent = '정리하는 중…';
+      var paths = data.photos.map(function (p) { return p.path; });
+      for (var pi = 0; pi < paths.length; pi += 100) await sb.storage.from('photos').remove(paths.slice(pi, pi + 100));
+      ok(await sb.rpc('leave_couple'));
+      urlCache = {};
+      await enter(false);
+      return;
     }
     else if (act === 'copy-code') {
       try { await navigator.clipboard.writeText(S.couple.code); el.textContent = '복사됨'; } catch (err) { el.textContent = '직접 적어 주세요'; }
