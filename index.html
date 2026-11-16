@@ -123,7 +123,8 @@ form{margin:0}
 .slide .pc{flex:none;font-size:14px;line-height:20px;color:#fff;text-align:center;align-items:center}
 .chip.m,.bar.m{background:#FAD9E4;color:#86204A}
 .pin{width:1em;height:1em;vertical-align:-.12em;margin-right:2px}
-.nav{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom));z-index:5;align-self:center;display:flex;gap:2px;background:#fff;border-radius:999px;padding:3px;box-shadow:0 4px 16px rgba(30,35,48,.16);margin-top:auto}
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:5;display:flex;gap:2px;background:#fff;border-radius:999px;padding:3px;box-shadow:0 4px 16px rgba(30,35,48,.16);white-space:nowrap}
+.navgap{height:50px;flex:none}
 .nav button{flex:none;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:transparent;font-size:13px;color:#555B6A;display:flex;align-items:center;justify-content:center;gap:5px}
 .nav button svg{width:15px;height:15px}
 .nav button[aria-current=page]{background:#1E2330;color:#fff;font-weight:700}
@@ -355,7 +356,7 @@ function inviteCard() {
 }
 
 function navHtml(cur) {
-  return '<nav class="nav" aria-label="화면 이동">' +
+  return '<div class="navgap" aria-hidden="true"></div><nav class="nav" aria-label="화면 이동">' +
     '<button data-act="go" data-view="home"' + (cur === 'home' ? ' aria-current="page"' : '') + '>' + I.cal + '캘린더</button>' +
     '<button data-act="go" data-view="wish"' + (cur === 'wish' ? ' aria-current="page"' : '') + '>' + I.star + '위시리스트</button></nav>';
 }
@@ -532,7 +533,7 @@ function viewSettings() {
       : '<div class="card col" style="gap:4px"><span class="sub">연결된 사람</span><span>' + esc(data.names[other]) + '</span></div>') +
     '<p class="sub" style="padding:0 4px">로그인한 계정: ' + esc(S.user.email || '') + '</p>' +
     '<button class="btn sec" style="flex:none" data-act="logout">로그아웃</button>' +
-    '<p class="sub" style="text-align:center">버전 13</p>';
+    '<p class="sub" style="text-align:center">버전 14</p>';
 }
 
 function viewerHtml() {
