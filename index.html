@@ -104,10 +104,12 @@ legend{padding:0 4px 8px;font-size:15px;font-weight:700}
 button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #2F5BD0;outline-offset:2px}
 .field:disabled{opacity:.6}
 form{margin:0}
-input[type=date].field{height:52px;min-height:52px;padding:14px 16px;line-height:24px}
-input[type=date].field::-webkit-date-and-time-value{text-align:left;margin:0;line-height:24px;min-height:24px}
-.line input[type=date]{height:44px;min-height:44px;padding:10px 0;line-height:24px;-webkit-appearance:none;appearance:none}
-.line input[type=date]::-webkit-date-and-time-value{text-align:right;margin:0;line-height:24px;min-height:24px}
+.datebox{position:relative;display:flex;align-items:center}
+.datebox.alt{background:#F4F5F7}
+.datebox.inl{min-height:44px;justify-content:flex-end;color:#1F3F99;font-size:16px;flex:1}
+.datebox .dtxt.none{color:#555B6A}
+.datebox input.dateraw{position:absolute;left:0;top:0;width:100%;height:100%;min-height:0;margin:0;padding:0;border:0;opacity:0;-webkit-appearance:none;appearance:none;cursor:pointer}
+.datebox:focus-within{outline:2px solid #2F5BD0;outline-offset:2px}
 </style>
 </head>
 <body>
@@ -252,6 +254,12 @@ function eventsOf(date) {
 function notesOf(date) { return data.notes.filter(function (n) { return n.date === date; }).sort(function (x, y) { return x.ts - y.ts; }); }
 function evTime(e) { return e.allDay ? '하루 종일' : fmtTime(e.start) + (e.end ? ' ~ ' + fmtTime(e.end) : ''); }
 function noteTime(n) { var d = new Date(n.ts); return fmtTime(pad(d.getHours()) + ':' + pad(d.getMinutes())); }
+function dateText(v) { if (!v) return ''; var p = v.split('-').map(Number); return p[0] + '년 ' + p[1] + '월 ' + p[2] + '일'; }
+/* 아이폰은 날짜 칸 글자 위치를 마음대로 놓기 때문에, 글자는 직접 그리고 실제 날짜 칸은 투명하게 위에 덮는다 */
+function dateField(id, value, max, cls) {
+  return '<div class="datebox ' + (cls || 'field') + '"><span class="dtxt' + (value ? '' : ' none') + '" id="' + id + '-txt">' + (value ? dateText(value) : '날짜 선택') + '</span>' +
+    '<input class="dateraw" id="' + id + '" type="date"' + (max ? ' max="' + max + '"' : '') + ' value="' + esc(value || '') + '"></div>';
+}
 function msgLine() { return '<p class="msg" id="msg" role="alert"></p>'; }
 
 function viewLoading() { return '<p class="empty" style="margin:auto">불러오는 중이에요…</p>'; }
@@ -278,7 +286,7 @@ function viewProfile() {
     '<p class="sub" style="line-height:20px">캘린더에 보일 이름과 생일을 알려 주세요. 생일은 매년 자동으로 표시돼요.</p></div>' +
     '<form class="col" data-form="profile" style="gap:14px" novalidate>' +
     '<div class="col"><label class="sec-h" for="p-name">이름</label><input class="field" id="p-name" type="text" maxlength="2" autocomplete="off" placeholder="예: 지우"><p class="sub" style="padding:0 4px">성은 빼고 이름 2글자까지만 적어 주세요.</p></div>' +
-    '<div class="col"><label class="sec-h" for="p-bd">생일</label><input class="field" id="p-bd" type="date" max="' + today + '"></div>' +
+    '<div class="col"><label class="sec-h" for="p-bd">생일</label>' + dateField('p-bd', '', today) + '</div>' +
     msgLine() + '<button class="btn" style="flex:none" type="submit">다음</button></form>' +
     '<button class="text-btn" data-act="logout" style="align-self:center">로그아웃</button>';
 }
@@ -287,7 +295,7 @@ function viewCouple() {
   return '<div class="col" style="gap:6px;padding-top:32px"><h1 class="disp" style="font-size:28px;line-height:36px">캘린더 연결하기</h1>' +
     '<p class="sub" style="line-height:20px">둘 중 한 사람이 캘린더를 만들고, 다른 사람은 초대 코드로 들어와요.</p></div>' +
     '<form class="card col" data-form="create" style="gap:12px" novalidate><h2 class="sec-h" style="padding:0">새 캘린더 만들기</h2>' +
-    '<div class="col"><label class="sub" for="c-met">처음 만난 날</label><input class="field" id="c-met" type="date" max="' + today + '" style="background:#F4F5F7">' +
+    '<div class="col"><label class="sub" for="c-met">처음 만난 날</label>' + dateField('c-met', '', today, 'field alt') + '' +
     '<p class="sub">매년 이 날짜에 "💛1주년"처럼 표시돼요. 나중에 바꿀 수 있어요.</p></div>' +
     '<button class="btn" style="flex:none" type="submit">캘린더 만들기</button></form>' +
     '<form class="card col" data-form="join" style="gap:12px" novalidate><h2 class="sec-h" style="padding:0">초대 코드가 있어요</h2>' +
@@ -390,7 +398,7 @@ function draftHtml() {
 function viewWrite() {
   return '<div class="row between"><button class="text-btn" data-act="back">취소</button><h1 class="disp" style="font-size:20px">기록 남기기</h1>' +
     '<button class="text-btn pri" data-act="save-write">저장</button></div>' +
-    '<div class="card" style="padding:0 16px"><div class="line"><label for="w-date">날짜</label><input id="w-date" type="date" value="' + st.sel + '"></div></div>' +
+    '<div class="card" style="padding:0 16px"><div class="line"><label for="w-date">날짜</label>' + dateField('w-date', st.sel, '', 'inl') + '</div></div>' +
     '<section class="col"><h2 class="sec-h">사진</h2><input class="sr" id="files" type="file" accept="image/*" multiple>' +
     '<div class="photos" id="pv">' + draftHtml() + '</div>' +
     '<p class="sub" style="padding:0 4px">사진은 누가 올렸는지 표시되지 않아요. 고른 사진을 누르면 빠져요.</p></section>' +
@@ -421,7 +429,7 @@ function viewSchedule() {
     '<fieldset><legend>누구의 일정인가요?</legend><div class="own">' + own + '</div>' +
     '<p class="sub" style="padding:8px 4px 0">캘린더에 이 색 막대로 표시돼요. "우리"는 둘 다의 일정이에요.</p></fieldset>' +
     '<div class="card" style="padding:0 16px">' +
-    '<div class="line"><label for="e-date">날짜</label><input id="e-date" type="date" value="' + st.sel + '"></div>' +
+    '<div class="line"><label for="e-date">날짜</label>' + dateField('e-date', st.sel, '', 'inl') + '</div>' +
     '<div class="line"><label for="allday">하루 종일</label><input id="allday" type="checkbox"></div>' +
     '<div class="line tm"><label for="e-start">시작</label><select id="e-start">' + timeOpts('12:00', false) + '</select></div>' +
     '<div class="line tm"><label for="e-end">종료</label><select id="e-end">' + timeOpts('', true) + '</select></div></div>' +
@@ -435,8 +443,8 @@ function viewSettings() {
     '<h1 class="disp" style="font-size:24px">우리 정보</h1></div>' +
     '<form class="col" data-form="settings" style="gap:14px" novalidate>' +
     '<div class="col"><label class="sec-h" for="s-name">내 이름</label><input class="field" id="s-name" type="text" maxlength="2" autocomplete="off" value="' + esc(S.me.name) + '"><p class="sub" style="padding:0 4px">성은 빼고 이름 2글자까지만 적어 주세요.</p></div>' +
-    '<div class="col"><label class="sec-h" for="s-bd">내 생일</label><input class="field" id="s-bd" type="date" max="' + today + '" value="' + esc(S.me.birthday || '') + '"></div>' +
-    '<div class="col"><label class="sec-h" for="s-met">처음 만난 날</label><input class="field" id="s-met" type="date" max="' + today + '" value="' + esc(S.couple.met || '') + '">' +
+    '<div class="col"><label class="sec-h" for="s-bd">내 생일</label>' + dateField('s-bd', S.me.birthday || '', today) + '</div>' +
+    '<div class="col"><label class="sec-h" for="s-met">처음 만난 날</label>' + dateField('s-met', S.couple.met || '', today) + '' +
     '<p class="sub" style="padding:0 4px;line-height:20px">매년 이 날짜에 "💛1주년", "💛2주년"처럼 하루 종일 일정이 생겨요.</p></div>' +
     msgLine() + '<button class="btn" style="flex:none" type="submit">저장하기</button></form>' +
     (S.alone ? inviteCard()
@@ -444,7 +452,8 @@ function viewSettings() {
         (data.dates[other] ? ' · 생일 ' + Number(data.dates[other].slice(5, 7)) + '월 ' + Number(data.dates[other].slice(8)) + '일' : '') + '</span>' +
         '<span class="sub">상대의 이름과 생일은 상대가 직접 바꿀 수 있어요.</span></div>') +
     '<p class="sub" style="padding:0 4px">로그인한 계정: ' + esc(S.user.email || '') + '</p>' +
-    '<button class="btn sec" style="flex:none" data-act="logout">로그아웃</button>';
+    '<button class="btn sec" style="flex:none" data-act="logout">로그아웃</button>' +
+    '<p class="sub" style="text-align:center">버전 5</p>';
 }
 
 function viewerHtml() {
@@ -536,6 +545,7 @@ async function guard(fn) {
 
 var prevView = 'home';
 app.addEventListener('click', function (e) {
+  if (e.target.classList && e.target.classList.contains('dateraw') && e.target.showPicker) { try { e.target.showPicker(); } catch (err) {} }
   var el = e.target.closest('[data-act]');
   if (!el) return;
   var act = el.dataset.act;
@@ -718,6 +728,9 @@ app.addEventListener('change', async function (e) {
     var pv = document.getElementById('pv');
     if (pv) pv.innerHTML = draftHtml();
     msg(failed ? '열 수 없는 사진 ' + failed + '장은 빼고 담았어요.' : '');
+  } else if (e.target.classList.contains('dateraw')) {
+    var tx = document.getElementById(e.target.id + '-txt');
+    if (tx) { tx.textContent = e.target.value ? dateText(e.target.value) : '날짜 선택'; tx.classList.toggle('none', !e.target.value); }
   } else if (e.target.id === 'allday') {
     var rows = document.querySelectorAll('.tm');
     for (var j = 0; j < rows.length; j++) rows[j].style.display = e.target.checked ? 'none' : '';
