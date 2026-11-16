@@ -121,6 +121,7 @@ form{margin:0}
 .slide{flex-direction:column;gap:10px}
 .slide img{flex:1 1 0;min-height:0;width:100%;max-height:none;object-fit:contain}
 .slide .pc{flex:none;font-size:14px;line-height:20px;color:#fff;text-align:center;align-items:center}
+.chip.m,.bar.m{background:#FAD9E4;color:#86204A}
 </style>
 </head>
 <body>
@@ -248,18 +249,24 @@ function yearly(src, date) {
   var n = y - Number(src.slice(0, 4));
   return date.slice(5) === md && n >= 0 ? n : -1;
 }
-function autoEvents(date) {
+/* 생일과 기념일: 일정이 아니라 그 날짜에 붙는 표시 */
+function marksOf(date) {
   var list = [], dt = data.dates;
   ['a', 'b'].forEach(function (k) {
-    if (yearly(dt[k], date) >= 0) list.push({ id: 'auto-' + k, auto: true, owner: k, title: '🎂' + data.names[k] + '생일', allDay: true });
+    if (yearly(dt[k], date) >= 0) list.push('🎂' + data.names[k] + '생일');
   });
   var n = yearly(dt.met, date);
-  if (n === 0) list.push({ id: 'auto-met', auto: true, owner: 's', title: '💛처음 만난 날', allDay: true });
-  if (n > 0) list.push({ id: 'auto-met', auto: true, owner: 's', title: '💛' + n + '주년', allDay: true });
+  if (n === 0) list.push('💛처음 만난 날');
+  if (n > 0) list.push('💛' + n + '주년');
   return list;
 }
+function marksHtml(date) {
+  var mk = marksOf(date);
+  if (!mk.length) return '';
+  return '<div class="row" style="flex-wrap:wrap;gap:6px">' + mk.map(function (t) { return '<span class="chip m">' + esc(t) + '</span>'; }).join('') + '</div>';
+}
 function eventsOf(date) {
-  return autoEvents(date).concat(data.events.filter(function (e) { return e.date === date; })).sort(function (x, y) {
+  return data.events.filter(function (e) { return e.date === date; }).sort(function (x, y) {
     return (x.allDay ? '' : x.start || '').localeCompare(y.allDay ? '' : y.start || '');
   });
 }
@@ -336,9 +343,11 @@ function viewHome() {
     var date = ds(st.y, st.m, d);
     var ev = eventsOf(date);
     var cls = 'num' + (memo[date] ? ' ph' : '') + (date === today ? ' today' : '') + (date === st.sel ? ' sel' : '');
-    var bars = ev.slice(0, 2).map(function (e) { return '<span class="bar ' + e.owner + '">' + esc(e.title) + '</span>'; }).join('');
-    if (ev.length > 2) bars += '<span class="more">+' + (ev.length - 2) + '</span>';
-    var label = st.m + '월 ' + d + '일' + (ev.length ? ', 일정 ' + ev.length + '개' : '') + (memo[date] ? ', 추억 있음' : '');
+    var mk = marksOf(date);
+    var all = mk.map(function (t) { return { c: 'm', t: t }; }).concat(ev.map(function (e) { return { c: e.owner, t: e.title }; }));
+    var bars = all.slice(0, 2).map(function (x) { return '<span class="bar ' + x.c + '">' + esc(x.t) + '</span>'; }).join('');
+    if (all.length > 2) bars += '<span class="more">+' + (all.length - 2) + '</span>';
+    var label = st.m + '월 ' + d + '일' + (mk.length ? ', ' + mk.join(', ') : '') + (ev.length ? ', 일정 ' + ev.length + '개' : '') + (memo[date] ? ', 추억 있음' : '');
     cells += '<button class="cell" data-act="pick" data-date="' + date + '" aria-label="' + label + '"><span class="' + cls + '">' + d + '</span>' + bars + '</button>';
   }
   var ev2 = eventsOf(st.sel), notes = notesOf(st.sel), ph = st.photos;
@@ -370,9 +379,10 @@ function viewHome() {
     '<div class="legend"><span><i class="sw" style="background:#DCE6FB;border:1px solid #2F5BD0"></i>' + esc(data.names.a) + '</span>' +
     '<span><i class="sw" style="background:#FCE3CC;border:1px solid #C96A14"></i>' + esc(data.names.b) + '</span>' +
     '<span><i class="sw" style="background:#1E2330"></i>우리</span>' +
+    '<span><i class="sw" style="background:#FAD9E4;border:1px solid #C2557E"></i>기념일</span>' +
     '<span><i class="sw" style="background:#D5DBE8;width:12px;height:12px"></i>추억 있는 날</span></div></div>' +
     '<div class="card col grow" style="gap:12px"><div class="row between"><h2 class="disp" style="font-size:20px">' + fmtDate(st.sel) + '</h2>' +
-    '<button class="text-btn pri" data-act="go" data-view="day" style="font-weight:500;font-size:14px">자세히</button></div>' + body + '</div>' +
+    '<button class="text-btn pri" data-act="go" data-view="day" style="font-weight:500;font-size:14px">자세히</button></div>' + marksHtml(st.sel) + body + '</div>' +
     '<div class="row"><button class="btn" data-act="go" data-view="write">' + I.photo + '기록 남기기</button>' +
     '<button class="btn sec" data-act="go" data-view="schedule">' + I.plus + '일정 추가</button></div>';
 }
@@ -381,7 +391,7 @@ function viewDay() {
   var ev = eventsOf(st.sel), notes = notesOf(st.sel), ph = st.photos;
   var d = parse(st.sel);
   return '<div class="row"><button class="icon" data-act="go" data-view="home" aria-label="캘린더로 돌아가기">' + I.left + '</button>' +
-    '<div><div class="sub">' + d.getFullYear() + '년</div><h1 class="disp" style="font-size:24px;line-height:30px">' + fmtDate(st.sel) + '</h1></div></div>' +
+    '<div><div class="sub">' + d.getFullYear() + '년</div><h1 class="disp" style="font-size:24px;line-height:30px">' + fmtDate(st.sel) + '</h1></div></div>' + marksHtml(st.sel) +
     (st.note ? '<div class="warn">' + esc(st.note) + '</div>' : '') +
     '<section class="col"><h2 class="sec-h">사진 ' + ph.length + '장</h2>' +
     (ph.length ? '<div class="photos">' + ph.map(function (p) { return '<div class="pt"><button data-act="view" data-id="' + p.id + '" aria-label="사진 크게 보기"><img src="' + esc(p.data) + '" alt="" loading="lazy"></button>' + capHtml(p, true) + '</div>'; }).join('') + '</div>'
@@ -394,7 +404,7 @@ function viewDay() {
     '<section class="col"><h2 class="sec-h">일정</h2>' +
     (ev.length ? '<div class="card" style="padding:4px 16px">' + ev.map(function (e) {
       return '<div class="ev" style="flex-wrap:wrap;row-gap:0">' + chip(e.owner) + '<span class="ttl">' + esc(e.title) + '</span><span class="t">' + evTime(e) + '</span>' +
-        (e.auto ? '<span class="sub" style="padding:0 4px">자동</span>' : '<button class="del" style="margin-left:0" data-act="del-ev" data-id="' + e.id + '">삭제</button>') +
+        '<button class="del" style="margin-left:0" data-act="del-ev" data-id="' + e.id + '">삭제</button>' +
         (e.memo ? '<p class="sub" style="flex-basis:100%;padding-bottom:10px;white-space:pre-wrap">' + esc(e.memo) + '</p>' : '') + '</div>';
     }).join('') + '</div>' : '<p class="empty" style="padding-left:4px">아직 일정이 없어요.</p>') + '</section>' +
     '<div class="row" style="margin-top:auto"><button class="btn" data-act="go" data-view="write">' + I.photo + '기록 남기기</button>' +
@@ -454,7 +464,7 @@ function viewSettings() {
   return '<div class="row"><button class="icon" data-act="go" data-view="home" aria-label="캘린더로 돌아가기">' + I.left + '</button>' +
     '<h1 class="disp" style="font-size:24px">우리 정보</h1></div>' +
     '<form class="col" data-form="settings" style="gap:14px" novalidate>' +
-    '<div class="col"><label class="sec-h" for="s-name">내 이름</label><input class="field" id="s-name" type="text" maxlength="2" autocomplete="off" value="' + esc(S.me.name) + '"><p class="sub" style="padding:0 4px">성은 빼고 이름 2글자까지만 적어 주세요.</p></div>' +
+    '<div class="col"><label class="sec-h" for="s-name">내 이름</label><input class="field" id="s-name" type="text" maxlength="2" autocomplete="off" value="' + esc(S.me.name) + '"></div>' +
     '<div class="col"><label class="sec-h" for="s-bd">내 생일</label>' + dateField('s-bd', S.me.birthday || '', today) + '</div>' +
     '<div class="col"><label class="sec-h" for="s-met">처음 만난 날</label>' + dateField('s-met', S.couple.met || '', today) + '</div>' +
     msgLine() + '<button class="btn" style="flex:none" type="submit">저장하기</button></form>' +
@@ -462,7 +472,7 @@ function viewSettings() {
       : '<div class="card col" style="gap:4px"><span class="sub">연결된 사람</span><span>' + esc(data.names[other]) + '</span></div>') +
     '<p class="sub" style="padding:0 4px">로그인한 계정: ' + esc(S.user.email || '') + '</p>' +
     '<button class="btn sec" style="flex:none" data-act="logout">로그아웃</button>' +
-    '<p class="sub" style="text-align:center">버전 7</p>';
+    '<p class="sub" style="text-align:center">버전 8</p>';
 }
 
 function viewerHtml() {
